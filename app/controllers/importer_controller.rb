@@ -1,5 +1,6 @@
 require 'fastercsv'
 require 'tempfile'
+require 'iconv'
 
 class MultipleIssuesForUniqueValue < Exception
 end
@@ -41,6 +42,11 @@ class ImporterController < ApplicationController
     sample_count = 5
     i = 0
     @samples = []
+    
+    # transcode the ANSI format to UTF8 using iconv
+    if (iip.encoding == "A" )
+    	ansi2utf8(iip)
+    end
     
     FasterCSV.new(iip.csv_data, {:headers=>true,
     :encoding=>iip.encoding, :quote_char=>iip.quote_char, :col_sep=>iip.col_sep}).each do |row|
@@ -124,6 +130,8 @@ class ImporterController < ApplicationController
       return
     end
     
+
+    
     default_tracker = params[:default_tracker]
     update_issue = params[:update_issue]
     unique_field = params[:unique_field].empty? ? nil : params[:unique_field]
@@ -157,6 +165,11 @@ class ImporterController < ApplicationController
     if unique_error && unique_attr == nil
       flash[:error] = unique_error
       return
+    end
+		
+    # transcode the ANSI format to UTF8 using iconv
+    if (iip.encoding == "A" )
+    	ansi2utf8(iip)
     end
 
     FasterCSV.new(iip.csv_data, {:headers=>true, :encoding=>iip.encoding, 
@@ -362,6 +375,14 @@ class ImporterController < ApplicationController
   end
 
 private
+	
+	# converts the ImportInProgrsse csv data from ansi to utf8
+	def ansi2utf8(importip)
+		converter = Iconv.new('UTF-8','CP1252')
+		importip.csv_data = converter.iconv(importip.csv_data)
+		#changing the encoding tag : U for UTF8
+		importip.encoding = "U"
+	end
 
   def find_project
     @project = Project.find(params[:project_id])
