@@ -47,7 +47,7 @@ class ImporterController < ApplicationController
     if (iip.encoding == "A" )
     	ansi2utf8(iip)
     end
-    
+
     FasterCSV.new(iip.csv_data, {:headers=>true,
     :encoding=>iip.encoding, :quote_char=>iip.quote_char, :col_sep=>iip.col_sep}).each do |row|
       @samples[i] = row
