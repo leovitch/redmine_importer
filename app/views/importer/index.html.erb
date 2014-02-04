@@ -8,7 +8,7 @@
 
 	<fieldset class="box"><legend><%= l(:label_upload_format) %></legend>
 		 <p><label><%=l(:label_upload_encoding)%></label>
-		<%= select_tag "encoding", "<option value=\"U\">UTF8</option><option value=\"EUC\">EUC</option><option value=\"S\">SJIS</option><option value=\"N\">None</option>" %></p>
+		<%= select_tag "encoding", options_for_select(importer_encodings_for_select) %></p>
 		
 		<p><label><%=l(:label_upload_splitter)%></label>
 		<%= text_field_tag "splitter", ',', {:size => 3, :maxlength => 1}%></p>
