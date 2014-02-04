@@ -1,5 +1,6 @@
 require 'fastercsv'
 require 'tempfile'
+require 'iconv'
 
 class MultipleIssuesForUniqueValue < Exception
 end
@@ -58,6 +59,15 @@ class ImporterController < ApplicationController
     i = 0
     @samples = []
     
+    # transcode the ANSI format to UTF8 using iconv
+    if (iip.encoding == "A" )
+    	ansi2utf8!(iip)
+    end
+    
+    # preparing the import
+    chomp_separators!(iip)
+    sub_blanks!(iip)
+
     FasterCSV.new(iip.csv_data, {:headers=>true,
     :encoding=>iip.encoding, :quote_char=>iip.quote_char, :col_sep=>iip.col_sep}).each do |row|
       @samples[i] = row
@@ -186,6 +196,8 @@ class ImporterController < ApplicationController
       return
     end
     
+
+    
     default_tracker = params[:default_tracker]
     update_issue = params[:update_issue]
     unique_field = params[:unique_field].empty? ? nil : params[:unique_field]
@@ -220,6 +232,15 @@ class ImporterController < ApplicationController
       flash[:error] = unique_error
       return
     end
+		
+    # transcode the ANSI format to UTF8 using iconv
+    if (iip.encoding == "A" )
+    	ansi2utf8!(iip)
+    end
+    
+    # preparing the import
+    chomp_separators!(iip)
+    sub_blanks!(iip)
 
     FasterCSV.new(iip.csv_data, {:headers=>true, :encoding=>iip.encoding, 
         :quote_char=>iip.quote_char, :col_sep=>iip.col_sep}).each do |row|
@@ -479,6 +500,44 @@ class ImporterController < ApplicationController
   end
 
 private
+	
+	# converts the ImportInProgrsse csv data from ansi to utf8
+	# @param ImportInProgress importip, the ImportInProgress to be transcoded from ANSI to UTF8
+	def ansi2utf8!(importip)
+		converter = Iconv.new('UTF-8','CP1252')
+		importip.csv_data = converter.iconv(importip.csv_data)
+		#changing the encoding tag : U for UTF8
+		importip.encoding = "U"
+	end
+	
+	
+  # deletes a repetition of CSV separators at the end of the file (eg. "last_field,,,\n" becomes "last_field\n")
+  # @param ImportInProgress importip whose csv_data will be processed
+	def chomp_separators!(importip)
+		separator=importip.col_sep
+		csv_data_chomped=""
+		importip.csv_data.each_line{ |line|
+			line.chomp!
+			line=~/^ *(.*?)((#{separator})*)$/
+			csv_data_chomped+=$1+"\n"
+		}
+		importip.csv_data=csv_data_chomped
+  end
+
+	#deletes spaces around separators and  in the start of line in csv_data (prevents parsing failure)
+	# @param ImportInProgress importip whose csv_data will be cleaned from unwanted spaces
+	def sub_blanks!(importip)
+		separator=importip.col_sep
+		csv_data_subed=""
+		importip.csv_data.each_line{ |line|
+			subed_line=line.gsub(/ *#{separator} */,separator)
+			csv_data_subed += subed_line
+		}
+		importip.csv_data=csv_data_subed
+		
+	end
+	
+
 
   def find_project
     @project = Project.find(params[:project_id])
